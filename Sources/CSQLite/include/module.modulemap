@@ -1,5 +1,7 @@
 module CSQLite {
     header "sqlite3.h"
     header "fts5_api_helper.h"
+    header "sqlite-vec.h"
+    header "vec_init.h"
     export *
 }

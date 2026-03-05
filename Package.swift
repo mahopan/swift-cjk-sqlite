@@ -27,6 +27,7 @@ let package = Package(
                 .define("SQLITE_MAX_VARIABLE_NUMBER", to: "250000"),
                 .define("SQLITE_THREADSAFE", to: "1"),
                 .define("HAVE_USLEEP", to: "1"),
+                .define("SQLITE_CORE"),
             ]
         ),
         // Swift wrapper + CJK tokenizer

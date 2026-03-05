@@ -5,9 +5,14 @@ import CSQLite
 public final class Database: @unchecked Sendable {
     private let db: OpaquePointer
     
+    private static let vecInitOnce: Void = {
+        sqlite_vec_auto_init()
+    }()
+
     /// Open a SQLite database and register the CJK tokenizer.
     /// - Parameter path: Path to the database file. Use ":memory:" for in-memory database.
     public init(path: String = ":memory:") throws {
+        _ = Self.vecInitOnce
         var handle: OpaquePointer?
         let rc = sqlite3_open(path, &handle)
         guard rc == SQLITE_OK, let handle else {
