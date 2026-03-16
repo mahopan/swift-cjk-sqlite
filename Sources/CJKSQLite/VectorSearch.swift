@@ -26,15 +26,19 @@ extension Database {
         defer { sqlite3_finalize(stmt) }
 
         sqlite3_bind_int64(stmt, 1, rowid)
-        vector.withUnsafeBufferPointer { buf in
+
+        // Bind blob and step inside withUnsafeBufferPointer to ensure the pointer
+        // remains valid during sqlite3_step (SQLITE_STATIC requires pointer validity
+        // until the statement is finalized or re-bound).
+        try vector.withUnsafeBufferPointer { buf in
             let raw = UnsafeRawBufferPointer(buf)
             sqlite3_bind_blob(stmt, 2, raw.baseAddress, Int32(raw.count), nil)
-        }
 
-        let stepRc = sqlite3_step(stmt)
-        if stepRc != SQLITE_DONE {
-            let msg = String(cString: sqlite3_errmsg(handle))
-            throw DatabaseError.executeFailed(message: msg)
+            let stepRc = sqlite3_step(stmt)
+            if stepRc != SQLITE_DONE {
+                let msg = String(cString: sqlite3_errmsg(handle))
+                throw DatabaseError.executeFailed(message: msg)
+            }
         }
     }
 
@@ -54,17 +58,20 @@ extension Database {
         }
         defer { sqlite3_finalize(stmt) }
 
-        query.withUnsafeBufferPointer { buf in
+        // Bind blob and step inside withUnsafeBufferPointer to ensure the query
+        // pointer remains valid during all sqlite3_step calls.
+        let results: [(rowid: Int64, distance: Double)] = try query.withUnsafeBufferPointer { buf in
             let raw = UnsafeRawBufferPointer(buf)
             sqlite3_bind_blob(stmt, 1, raw.baseAddress, Int32(raw.count), nil)
-        }
-        sqlite3_bind_int(stmt, 2, Int32(limit))
+            sqlite3_bind_int(stmt, 2, Int32(limit))
 
-        var results: [(rowid: Int64, distance: Double)] = []
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            let rowid = sqlite3_column_int64(stmt, 0)
-            let distance = sqlite3_column_double(stmt, 1)
-            results.append((rowid: rowid, distance: distance))
+            var rows: [(rowid: Int64, distance: Double)] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                let rowid = sqlite3_column_int64(stmt, 0)
+                let distance = sqlite3_column_double(stmt, 1)
+                rows.append((rowid: rowid, distance: distance))
+            }
+            return rows
         }
         return results
     }
